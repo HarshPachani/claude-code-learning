@@ -4,7 +4,42 @@
 
 {% block content %}
 
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const openBtn = document.getElementById('open-modal');
+    const closeBtn = document.getElementById('close-modal');
+    const overlay = document.getElementById('modal-overlay');
+    const video = document.getElementById('modal-video');
+    const videoSrc = "https://www.youtube.com/embed/dQw4w9WgXcQ"; // Placeholder URL
+
+    function openModal() {
+        video.src = videoSrc + "?autoplay=1";
+        overlay.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+        video.src = "";
+        overlay.style.display = 'none';
+        document.body.style.overflow = '';
+    }
+
+    if (openBtn) openBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        openModal();
+    });
+
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) closeModal();
+    });
+});
+</script>
+
 <section class="hero">
+
+
     <div class="hero-inner">
         <div class="hero-badge">Free to use &middot; No credit card needed</div>
         <h1 class="hero-title">
@@ -17,10 +52,11 @@
         </p>
         <div class="hero-actions">
             <a href="{{ url_for('register') }}" class="btn-primary">Create free account</a>
-            <a href="#" class="btn-ghost">See how it works</a>
+            <a href="#" class="btn-ghost" id="open-modal">See how it works</a>
         </div>
     </div>
     <div class="hero-visual">
+
         <div class="mock-card">
             <div class="mock-card-stats">
                 <div class="stat-card">
@@ -90,5 +126,14 @@
         <a href="{{ url_for('register') }}" class="btn-primary">Create free account</a>
     </div>
 </section>
+
+<div class="modal-overlay" id="modal-overlay">
+    <div class="modal-container">
+        <button class="modal-close" id="close-modal">&times;</button>
+        <div class="video-container">
+            <iframe id="modal-video" src="" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+        </div>
+    </div>
+</div>
 
 {% endblock %}

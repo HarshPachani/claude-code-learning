@@ -44,7 +44,7 @@ def login():
 
         if user and check_password_hash(user["password_hash"], password):
             session["user_id"] = user["id"]
-            return redirect(url_for("landing"))
+            return redirect(url_for("profile"))
 
         return render_template("login.html", error="Invalid email or password")
 
@@ -73,7 +73,51 @@ def logout():
 
 @app.route("/profile")
 def profile():
-    return "Profile page — coming in Step 4"
+    if not session.get("user_id"):
+        return redirect(url_for("login"))
+
+    with get_db() as db:
+        user_record = db.execute(
+            "SELECT * FROM users WHERE id = ?",
+            (session["user_id"],)
+        ).fetchone()
+
+    if not user_record:
+        return redirect(url_for("login"))
+
+    # Mock User Data using real record
+    user = {
+        "name": user_record["name"],
+        "email": user_record["email"],
+        "member_since": "October 2023",
+        "initials": "".join([n[0].upper() for n in user_record["name"].split()])
+    }
+
+    # Summary Statistics
+    stats = [
+        {"label": "Total Spent", "value": "₹45,200", "icon": "wallet", "delta": "+2.5% vs last month"},
+        {"label": "Transactions", "value": "128", "icon": "list", "delta": "12 this week"},
+        {"label": "Top Category", "value": "Dining", "icon": "utensils", "delta": "34% of total"}
+    ]
+
+    # Recent Transactions
+    transactions = [
+        {"date": "2023-10-10", "desc": "Starbucks Coffee", "cat": "Dining", "amount": "-₹350", "cat_class": "badge-dining"},
+        {"date": "2023-10-09", "desc": "Uber Ride", "cat": "Transport", "amount": "-₹1,200", "cat_class": "badge-transport"},
+        {"date": "2023-10-08", "desc": "Amazon Shopping", "cat": "Shopping", "amount": "-₹4,500", "cat_class": "badge-shopping"},
+        {"date": "2023-10-07", "desc": "Monthly Rent", "cat": "Housing", "amount": "-₹15,000", "cat_class": "badge-housing"},
+        {"date": "2023-10-06", "desc": "Freelance Payment", "cat": "Income", "amount": "+₹20,000", "cat_class": "badge-income"},
+    ]
+
+    # Category Breakdown
+    categories = [
+        {"name": "Housing", "amount": "₹15,000", "percent": 33, "color": "var(--accent)"},
+        {"name": "Shopping", "amount": "₹8,000", "percent": 18, "color": "var(--accent-2)"},
+        {"name": "Dining", "amount": "₹6,500", "percent": 14, "color": "#6366F1"},
+        {"name": "Transport", "amount": "₹4,000", "percent": 9, "color": "#10B981"},
+    ]
+
+    return render_template("profile.html", user=user, stats=stats, transactions=transactions, categories=categories)
 
 
 @app.route("/expenses/add")

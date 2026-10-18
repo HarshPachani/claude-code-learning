@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from werkzeug.security import check_password_hash
 from database.db import init_db, seed_db, get_db
+from database.queries import get_category_breakdown, get_summary_stats, get_recent_transactions, get_user_by_id
 
 app = Flask(__name__)
 app.secret_key = "spendly-secret-key-for-dev"
@@ -86,36 +87,57 @@ def profile():
         return redirect(url_for("login"))
 
     # Mock User Data using real record
+    user_record_full = get_user_by_id(session["user_id"])
+
+    from datetime import datetime
+    member_since = "—"
+    if user_record_full and user_record_full.get("created_at"):
+        try:
+            dt = datetime.fromisoformat(user_record_full["created_at"])
+            member_since = dt.strftime("%B %Y")
+        except ValueError:
+            pass
+
     user = {
-        "name": user_record["name"],
-        "email": user_record["email"],
-        "member_since": "October 2023",
-        "initials": "".join([n[0].upper() for n in user_record["name"].split()])
+        "name": user_record_full["name"] if user_record_full else "User",
+        "email": user_record_full["email"] if user_record_full else "N/A",
+        "member_since": member_since,
+        "initials": "".join([n[0].upper() for n in (user_record_full["name"] if user_record_full else "User").split()])
     }
 
     # Summary Statistics
+    user_stats = get_summary_stats(session["user_id"])
     stats = [
-        {"label": "Total Spent", "value": "₹45,200", "icon": "wallet", "delta": "+2.5% vs last month"},
-        {"label": "Transactions", "value": "128", "icon": "list", "delta": "12 this week"},
-        {"label": "Top Category", "value": "Dining", "icon": "utensils", "delta": "34% of total"}
+        {"label": "Total Spent", "value": f"₹{user_stats['total_spent']:,.2f}", "icon": "wallet", "delta": ""},
+        {"label": "Transactions", "value": str(user_stats["transaction_count"]), "icon": "list", "delta": ""},
+        {"label": "Top Category", "value": user_stats["top_category"], "icon": "utensils", "delta": ""}
     ]
 
     # Recent Transactions
+    db_transactions = get_recent_transactions(session["user_id"])
     transactions = [
-        {"date": "2023-10-10", "desc": "Starbucks Coffee", "cat": "Dining", "amount": "-₹350", "cat_class": "badge-dining"},
-        {"date": "2023-10-09", "desc": "Uber Ride", "cat": "Transport", "amount": "-₹1,200", "cat_class": "badge-transport"},
-        {"date": "2023-10-08", "desc": "Amazon Shopping", "cat": "Shopping", "amount": "-₹4,500", "cat_class": "badge-shopping"},
-        {"date": "2023-10-07", "desc": "Monthly Rent", "cat": "Housing", "amount": "-₹15,000", "cat_class": "badge-housing"},
-        {"date": "2023-10-06", "desc": "Freelance Payment", "cat": "Income", "amount": "+₹20,000", "cat_class": "badge-income"},
+        {
+            "date": row["date"],
+            "desc": row["description"],
+            "cat": row["category"],
+            "amount": f"₹{row['amount']:,.2f}",
+            "cat_class": f"badge-{row['category'].lower()}"
+        }
+        for row in db_transactions
     ]
 
     # Category Breakdown
-    categories = [
-        {"name": "Housing", "amount": "₹15,000", "percent": 33, "color": "var(--accent)"},
-        {"name": "Shopping", "amount": "₹8,000", "percent": 18, "color": "var(--accent-2)"},
-        {"name": "Dining", "amount": "₹6,500", "percent": 14, "color": "#6366F1"},
-        {"name": "Transport", "amount": "₹4,000", "percent": 9, "color": "#10B981"},
-    ]
+    category_data = get_category_breakdown(session["user_id"])
+    colors = ["var(--accent)", "var(--accent-2)", "#6366F1", "#10B981", "#F59E0B", "#EF4444"]
+
+    categories = []
+    for i, item in enumerate(category_data):
+        categories.append({
+            "name": item["name"],
+            "amount": f"₹{item['amount']:,.2f}",
+            "percent": item["pct"],
+            "color": colors[i % len(colors)]
+        })
 
     return render_template("profile.html", user=user, stats=stats, transactions=transactions, categories=categories)
 

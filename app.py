@@ -106,7 +106,16 @@ def profile():
     }
 
     # Summary Statistics
-    user_stats = get_summary_stats(session["user_id"])
+    start_date = request.args.get("start_date")
+    end_date = request.args.get("end_date")
+
+    # Basic date validation
+    if start_date and len(start_date) != 10:
+        start_date = None
+    if end_date and len(end_date) != 10:
+        end_date = None
+
+    user_stats = get_summary_stats(session["user_id"], start_date, end_date)
     stats = [
         {"label": "Total Spent", "value": f"₹{user_stats['total_spent']:,.2f}", "icon": "wallet", "delta": ""},
         {"label": "Transactions", "value": str(user_stats["transaction_count"]), "icon": "list", "delta": ""},
@@ -114,7 +123,7 @@ def profile():
     ]
 
     # Recent Transactions
-    db_transactions = get_recent_transactions(session["user_id"])
+    db_transactions = get_recent_transactions(session["user_id"], start_date, end_date)
     transactions = [
         {
             "date": row["date"],
@@ -127,7 +136,7 @@ def profile():
     ]
 
     # Category Breakdown
-    category_data = get_category_breakdown(session["user_id"])
+    category_data = get_category_breakdown(session["user_id"], start_date, end_date)
     colors = ["var(--accent)", "var(--accent-2)", "#6366F1", "#10B981", "#F59E0B", "#EF4444"]
 
     categories = []
@@ -139,7 +148,7 @@ def profile():
             "color": colors[i % len(colors)]
         })
 
-    return render_template("profile.html", user=user, stats=stats, transactions=transactions, categories=categories)
+    return render_template("profile.html", user=user, stats=stats, transactions=transactions, categories=categories, start_date=start_date, end_date=end_date)
 
 
 @app.route("/expenses/add")
